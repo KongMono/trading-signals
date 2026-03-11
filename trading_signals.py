@@ -4,8 +4,8 @@ import numpy as np
 import os
 
 # --- CONFIG FROM ENVIRONMENT VARIABLES ---
-# These will be set in GitHub Secrets
-SYMBOLS = ["DOGEFDUSD", "BTCFDUSD"]
+SYMBOLS = ["DOGEUSDT", "BTCUSDT"]  # Using USDT for better rate conversion
+USD_THB_RATE = 36.5  # Approximate Thai Baht rate
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -61,14 +61,19 @@ def run_check():
                 df[col] = df[col].astype(float)
             
             df = calculate_supertrend(df)
-            current_price = df['close'].iloc[-1]
+            current_price_usd = df['close'].iloc[-1]
+            current_price_thb = current_price_usd * USD_THB_RATE
+            
             is_uptrend = df['st_uptrend'].iloc[-1]
             was_uptrend = df['st_uptrend'].iloc[-2]
             
             print(f"--- {symbol} Status ---")
-            print(f"Price: {current_price} | Trend: {'UP' if is_uptrend else 'DOWN'}")
+            print(f"Price (USD): {current_price_usd} | Price (THB): {current_price_thb:,.2f}")
+            print(f"Trend: {'UP' if is_uptrend else 'DOWN'}")
             
-            status_msg = f"📊 *{symbol} Daily Update*\nPrice: {current_price}\nTrend: {'🟢 BULLISH' if is_uptrend else '🔴 BEARISH'}\n"
+            # Formatting symbols for display
+            display_symbol = symbol.replace("USDT", "")
+            status_msg = f"📊 *{display_symbol}/THB Daily Update*\nPrice (THB): ฿{current_price_thb:,.2f}\nPrice (USD): ${current_price_usd}\nTrend: {'🟢 BULLISH' if is_uptrend else '🔴 BEARISH'}\n"
             
             if is_uptrend and not was_uptrend:
                 alert = "🚀 *SIGNAL: BUY (Green Dot Triggered!)*"
