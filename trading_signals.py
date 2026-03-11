@@ -2,13 +2,10 @@ import requests
 import pandas as pd
 import numpy as np
 import os
-
 import yfinance as yf
 
 # --- CONFIG FROM ENVIRONMENT VARIABLES ---
-# Yahoo Finance uses different symbol names
 SYMBOLS = {"BTC": "BTC-USD", "DOGE": "DOGE-USD"}
-USD_THB_RATE = 36.5  # Approximate Thai Baht rate
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -65,7 +62,6 @@ def run_check():
         try:
             print(f"Fetching data for {yf_symbol} from Yahoo Finance...")
             ticker = yf.Ticker(yf_symbol)
-            # Fetch last 100 days of daily data
             df = ticker.history(period="100d", interval="1d")
             
             if df.empty:
@@ -73,21 +69,17 @@ def run_check():
                 continue
             
             df = calculate_supertrend(df)
-            current_price_usd = df['Close'].iloc[-1]
-            current_price_thb = current_price_usd * USD_THB_RATE
-            
+            current_price = df['Close'].iloc[-1]
             is_uptrend = df['st_uptrend'].iloc[-1]
             was_uptrend = df['st_uptrend'].iloc[-2]
             
-            # Check if this is a manual run from GitHub Actions
             run_type = os.getenv("RUN_TYPE", "manual")
             print(f"DEBUG: run_type detected as '{run_type}'")
             
             print(f"--- {display_symbol} Status ---")
-            print(f"Price (USD): {current_price_usd:.4f} | Price (THB): {current_price_thb:,.2f}")
-            print(f"Trend: {'UP' if is_uptrend else 'DOWN'}")
+            print(f"Price (USD): {current_price:.4f} | Trend: {'UP' if is_uptrend else 'DOWN'}")
             
-            status_msg = f"📊 *{display_symbol}/THB Daily Update*\nPrice (THB): ฿{current_price_thb:,.2f}\nPrice (USD): ${current_price_usd:,.4f}\nTrend: {'🟢 BULLISH' if is_uptrend else '🔴 BEARISH'}\n"
+            status_msg = f"📊 *{display_symbol}/USD Daily Update*\nPrice: ${current_price:,.4f}\nTrend: {'🟢 BULLISH' if is_uptrend else '🔴 BEARISH'}\n"
             
             if is_uptrend and not was_uptrend:
                 alert = "🚀 *SIGNAL: BUY (Green Dot Triggered!)*"
@@ -95,16 +87,15 @@ def run_check():
             elif not is_uptrend and was_uptrend:
                 alert = "⚠️ *SIGNAL: SELL (Trend flipped to DOWN)*"
                 send_telegram_message(status_msg + alert)
-            else:
-                # Always send on manual check for testing
-                print(f"Sending manual update for {display_symbol}...")
+            elif run_type == "workflow_dispatch" or run_type == "manual":
+                # Manual Check Output
                 send_telegram_message(status_msg + "_Manual Status Check (No trend change)_")
                 
         except Exception as e:
             print(f"Error checking {display_symbol}: {e}")
-                
-        except Exception as e:
-            print(f"Error checking {symbol}: {e}")
+
+if __name__ == "__main__":
+    run_check()
 
 if __name__ == "__main__":
     run_check()
