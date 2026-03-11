@@ -49,6 +49,15 @@ def calculate_supertrend(df, period=10, multiplier=3):
     return df
 
 def run_check():
+    # TEST TELEGRAM CONNECTION IMMEDIATELY
+    print("--- DEBUG: Starting Telegram Connection Test ---")
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("CRITICAL ERROR: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing from GitHub Secrets!")
+    else:
+        print(f"TELEGRAM_BOT_TOKEN length: {len(TELEGRAM_BOT_TOKEN)}")
+        print(f"TELEGRAM_CHAT_ID: {TELEGRAM_CHAT_ID}")
+        send_telegram_message("🔍 *Bot Connection Test:* The script is starting now...")
+
     for symbol in SYMBOLS:
         try:
             url = f"https://api.binance.com/api/v3/klines?symbol={symbol.upper()}&interval=1d&limit=100"
