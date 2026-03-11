@@ -69,6 +69,7 @@ def run_check():
             
             # Check if this is a manual run from GitHub Actions
             run_type = os.getenv("RUN_TYPE", "manual")
+            print(f"DEBUG: run_type detected as '{run_type}'")
             
             print(f"--- {symbol} Status ---")
             print(f"Price (USD): {current_price_usd} | Price (THB): {current_price_thb:,.2f}")
@@ -84,8 +85,9 @@ def run_check():
             elif not is_uptrend and was_uptrend:
                 alert = "⚠️ *SIGNAL: SELL (Trend flipped to DOWN)*"
                 send_telegram_message(status_msg + alert)
-            elif run_type == "workflow_dispatch" or run_type == "manual":
-                # Only send if manually triggered
+            else:
+                # Always send on manual check for testing
+                print(f"Sending manual update for {symbol}...")
                 send_telegram_message(status_msg + "_Manual Status Check (No trend change)_")
                 
         except Exception as e:
