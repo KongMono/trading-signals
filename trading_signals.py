@@ -67,6 +67,9 @@ def run_check():
             is_uptrend = df['st_uptrend'].iloc[-1]
             was_uptrend = df['st_uptrend'].iloc[-2]
             
+            # Check if this is a manual run from GitHub Actions
+            run_type = os.getenv("RUN_TYPE", "manual")
+            
             print(f"--- {symbol} Status ---")
             print(f"Price (USD): {current_price_usd} | Price (THB): {current_price_thb:,.2f}")
             print(f"Trend: {'UP' if is_uptrend else 'DOWN'}")
@@ -81,6 +84,9 @@ def run_check():
             elif not is_uptrend and was_uptrend:
                 alert = "⚠️ *SIGNAL: SELL (Trend flipped to DOWN)*"
                 send_telegram_message(status_msg + alert)
+            elif run_type == "workflow_dispatch" or run_type == "manual":
+                # Only send if manually triggered
+                send_telegram_message(status_msg + "_Manual Status Check (No trend change)_")
                 
         except Exception as e:
             print(f"Error checking {symbol}: {e}")
