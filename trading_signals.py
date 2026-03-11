@@ -16,9 +16,12 @@ def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}
     try:
-        requests.post(url, json=payload)
+        response = requests.post(url, json=payload)
+        print(f"Telegram Response Status: {response.status_code}")
+        print(f"Telegram Response Body: {response.text}")
+        response.raise_for_status()
     except Exception as e:
-        print(f"Telegram Error: {e}")
+        print(f"Telegram ERROR: {e}")
 
 def calculate_atr(df, period=10):
     high_low = df['high'] - df['low']
@@ -54,13 +57,12 @@ def run_check():
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("CRITICAL ERROR: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing from GitHub Secrets!")
     else:
-        print(f"TELEGRAM_BOT_TOKEN length: {len(TELEGRAM_BOT_TOKEN)}")
-        print(f"TELEGRAM_CHAT_ID: {TELEGRAM_CHAT_ID}")
         send_telegram_message("🔍 *Bot Connection Test:* The script is starting now...")
 
     for symbol in SYMBOLS:
         try:
-            url = f"https://api.binance.com/api/v3/klines?symbol={symbol.upper()}&interval=1d&limit=100"
+            # Using api-gcp.binance.com to avoid 451 geofencing errors on GitHub
+            url = f"https://api-gcp.binance.com/api/v3/klines?symbol={symbol.upper()}&interval=1d&limit=100"
             response = requests.get(url)
             response.raise_for_status()
             data = response.json()
