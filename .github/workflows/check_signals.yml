@@ -1,4 +1,4 @@
-name: Trading Signals Daily Check
+name: Trading Signals Automation V2
 
 on:
   schedule:
