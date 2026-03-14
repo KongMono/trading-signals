@@ -5,7 +5,7 @@ import os
 import yfinance as yf
 
 # --- CONFIG FROM ENVIRONMENT VARIABLES ---
-SYMBOLS = {"BTC": "BTC-USD", "DOGE": "DOGE-USD"}
+SYMBOLS = {"BTC": "BTC-USD", "ETH": "ETH-USD", "DOGE": "DOGE-USD"}
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -33,21 +33,37 @@ def calculate_atr(df, period=10):
 def calculate_supertrend(df, period=10, multiplier=3):
     atr = calculate_atr(df, period)
     hl2 = (df['High'] + df['Low']) / 2
-    upper_band = hl2 + (multiplier * atr)
-    lower_band = hl2 - (multiplier * atr)
     
-    df['st_uptrend'] = True
-    for i in range(1, len(df)):
-        if df['Close'].iloc[i] > upper_band.iloc[i-1]:
-            df.loc[df.index[i], 'st_uptrend'] = True
-        elif df['Close'].iloc[i] < lower_band.iloc[i-1]:
-            df.loc[df.index[i], 'st_uptrend'] = False
+    # Calculate basic bands
+    basic_ub = hl2 + (multiplier * atr)
+    basic_lb = hl2 - (multiplier * atr)
+    
+    # Convert to numpy for performance and avoiding Series issues in loop
+    close = df['Close'].values
+    ub = basic_ub.values
+    lb = basic_lb.values
+    
+    n = len(df)
+    uptrend = np.ones(n, dtype=bool)
+    
+    # Find first valid index (where ATR is not NaN)
+    first_valid = np.argmax(~np.isnan(ub))
+    
+    for i in range(first_valid + 1, n):
+        # Determine trend
+        if close[i] > ub[i-1]:
+            uptrend[i] = True
+        elif close[i] < lb[i-1]:
+            uptrend[i] = False
         else:
-            df.loc[df.index[i], 'st_uptrend'] = df['st_uptrend'].iloc[i-1]
-            if df['st_uptrend'].iloc[i] and lower_band.iloc[i] < lower_band.iloc[i-1]:
-                lower_band.iloc[i] = lower_band.iloc[i-1]
-            if not df['st_uptrend'].iloc[i] and upper_band.iloc[i] > upper_band.iloc[i-1]:
-                upper_band.iloc[i] = upper_band.iloc[i-1]
+            uptrend[i] = uptrend[i-1]
+            # Trail the stop
+            if uptrend[i] and lb[i] < lb[i-1]:
+                lb[i] = lb[i-1]
+            if not uptrend[i] and ub[i] > ub[i-1]:
+                ub[i] = ub[i-1]
+    
+    df['st_uptrend'] = uptrend
     return df
 
 def run_check():
@@ -87,15 +103,12 @@ def run_check():
             elif not is_uptrend and was_uptrend:
                 alert = "⚠️ *SIGNAL: SELL (Trend flipped to DOWN)*"
                 send_telegram_message(status_msg + alert)
-            elif run_type == "workflow_dispatch" or run_type == "manual":
-                # Manual Check Output
-                send_telegram_message(status_msg + "_Manual Status Check (No trend change)_")
+            elif run_type in ["workflow_dispatch", "manual", "schedule"]:
+                # Send update on manual trigger OR scheduled daily run
+                send_telegram_message(status_msg + "_Daily Status Check (No trend change)_")
                 
         except Exception as e:
             print(f"Error checking {display_symbol}: {e}")
-
-if __name__ == "__main__":
-    run_check()
 
 if __name__ == "__main__":
     run_check()
